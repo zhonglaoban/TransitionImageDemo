@@ -40,20 +40,15 @@ class ShowImageController: UIViewController, UIScrollViewDelegate, UIImagePicker
         
         return iv
     }()
-    //图片
-    var image: UIImage? {
-        didSet {
-            if image != nil {
-                let _ = self.calculateImageSize(image!)
-            }
-        }
-    }
+    
     init(sourceView:UIImageView) {
         super.init(nibName: nil, bundle: nil)
+        
+        self.setImage(image: sourceView.image)
         let window = UIApplication.shared.keyWindow
         self.showPicDelegate.dummyView = sourceView.snapshotView(afterScreenUpdates: false)
         self.showPicDelegate.sourceRect = sourceView.convert(sourceView.bounds, to: window)
-        self.showPicDelegate.destRect = calculateImageSize(sourceView.image!)
+        self.showPicDelegate.destRect = imageSize(sourceView.image!)
         self.transitioningDelegate = self.showPicDelegate
         modalPresentationStyle = UIModalPresentationStyle.custom
     }
@@ -73,23 +68,23 @@ class ShowImageController: UIViewController, UIScrollViewDelegate, UIImagePicker
         print("ShowImageController deinit")
     }
     /// 计算图像大小
-    func calculateImageSize(_ image: UIImage) -> CGRect{
-        // 重置 scrollView 的属性
-        let size = scaleImageSize(image)
-        scrollView.contentSize = size
+    func imageSize(_ image: UIImage?) -> CGRect {
+        if image == nil {
+            return .zero
+        }
+        let size = scaleImageSize(image!)
+        var origin:CGPoint = .zero
+        if size.height <= view.bounds.height {
+            origin = CGPoint(x: scrollView.center.x - size.width * 0.5, y: scrollView.center.y - size.height * 0.5)
+        }
+        return CGRect(origin: origin, size: size)
+    }
+    func setImage(image: UIImage?) {
         // 设置图像
         imageView.image = image
-        // 设置图像大小
-        imageView.bounds.size = size
-        
-        // 判断长短图
-        if size.height > view.bounds.height {
-            // 长图－置顶－设置滚动区域
-            imageView.frame.origin = CGPoint.zero
-        } else {
-            imageView.center = CGPoint(x: scrollView.center.x, y: scrollView.center.y)
-        }
-        return imageView.frame
+        let rect = imageSize(image)
+        imageView.frame = rect
+        scrollView.contentSize = rect.size
     }
     /// 按照屏幕宽度计算缩放后的图像尺寸
     func scaleImageSize(_ image: UIImage) -> CGSize {
@@ -199,7 +194,7 @@ class ShowImageController: UIViewController, UIScrollViewDelegate, UIImagePicker
     open func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
         if let editImage = info[UIImagePickerControllerEditedImage] as? UIImage {
             didFinishPickingBlock?(editImage)
-            self.image = editImage
+            self.setImage(image: editImage)
         }
         picker.dismiss(animated: true, completion: nil)
     }
